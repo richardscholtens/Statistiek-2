@@ -1,0 +1,228 @@
+---
+title: "Statistics2, lab 1: 1-way ANOVA"
+author: "J.F.P. (Richard) Scholtens s2956586"
+date: "April 25th, 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## 1. Load libraries and data
+
+```{r 1load}
+# remove the comments if you don't have these packages yet, run those lines and then comment the lines again. If you don't comment them again, every time you knit the file R will try to install those packages again.
+#install.packages("car")
+#install.packages("foreign")
+
+library(foreign)
+library(car)
+mydata = read.spss("lab1_reading.sav", to.data.frame=TRUE)
+# if you have the file lab1_reading.sav in another folder and you are using windows then it should be something as...
+#mydata = read.spss("C:/.../reading.sav", to.data.frame=TRUE) # where you need to replace "..." with the folder where the file is located.
+# this command produces a warning, which however is not important.
+
+```
+
+
+## 2. Investigate variable Post3
+
+```{r, fig.width=5, fig.height=5}
+str(mydata)
+boxplot(mydata$POST3 ~ mydata$Group, ylab = "Scores", col=rainbow(3))
+
+```
+
+According to these boxplots the DRTA reading method has the highest score, the highest median and has to share first place with Strat method when it comes to lowest score. This means the DRTA method is most promising and could come out as winner. The best reading method.
+
+
+## 3. Hypotheses
+
+$H_0$ = There is no difference between the reading methods: "Basal, DRTA and Strat".
+
+$H_a$ = There is a difference between the reading methods: "Basal, DRTA, and Strat".
+
+$\mu$ 1 = Basal
+
+$\mu$ 2 = DRTA
+
+$\mu$ 3 = Strat
+
+
+$H_0$ = $\mu$ 1 = $\mu$ 2 = $\mu$ 3 
+
+$H_a$ = Not all of the $\mu$i are equal
+
+
+## 4. Test normality
+
+```{r, fig.width=10, fig.height=5}
+aov <- aov(mydata$POST3 ~ mydata$Group)
+
+qqnorm(mydata$POST3[mydata$Group == 'Basal'])
+qqline(mydata$POST3[mydata$Group == 'Basal'])
+
+qqnorm(mydata$POST3[mydata$Group == 'Strat'])
+qqline(mydata$POST3[mydata$Group == 'Strat'])
+
+qqnorm(mydata$POST3[mydata$Group == 'DRTA'])
+qqline(mydata$POST3[mydata$Group == 'DRTA'])
+
+
+aggregate(mydata$POST3 ~ mydata$Group, data=mydata, function(x) shapiro.test(x)$p.value)
+```
+
+$H-0$ = Each group follows normal distribution.
+
+$H-a$ = Each group doesn't follow normal distribution.
+
+$\alpha$ = 0.05
+
+Shapiro P-value
+
+Basal   0.68981678
+DRTA   0.05837370
+Strat   0.08289363
+
+
+If we look at the qqplots we can see that all groups are normally distributed. The p-values of the shapiro-test are higher than the alpha level which means it is normally distributed. Therefor we cannot reject $H-0$.
+
+## 5. Test variance
+
+```{r, fig.width=5, fig.height=5}
+leveneTest(aov)
+```
+
+$H-0$ = The variance in the different groups are equal.
+
+$H-a$ = The variance in the different groups are not equal.
+
+$\alpha$ = 0.05
+
+P-value = 0.711
+
+The p-value is above the significance level. Therefor we do not reject $H-0$. This means all groups are homogeneous.
+
+
+## 6. Test variance with Hartley's test, by hand
+
+```{r, fig.width=5, fig.height=5}
+(basal <- mydata[mydata$Group == "Basal", ]$POST3)
+(basal_var <- var(basal))
+(count_bas <- length(basal))
+(drta <- mydata[mydata$Group == "DRTA", ]$POST3)
+(drta_var <- var(drta))
+(count_drta <- length(drta))
+(strat <- mydata[mydata$Group == "Strat", ]$POST3)
+(strat_var <- var(strat))
+(count_strat <- length(strat))
+(divided <- drta_var/basal_var)
+(nlevel_basal <- nlevels(mydata$Group))
+```
+
+$H-0$ = The variance in the different groups are equal.
+
+$H-a$ = The variance in the different groups are not equal.
+
+
+Basal variance = 31.75974
+
+DRTA variance = 54.58874
+
+Strat variance = 33.25541
+
+Dividing the highest variance by the lowest variance.
+
+DRTA variance / Basal variance = F-value
+
+54.58874 / 31.75974 = 1.718803
+
+DF = 21
+
+Number of levels = 3
+
+$\alpha$ = 0.05
+
+Critical value = 2.95 according to http://webspace.ship.edu/pgmarr/Geo441/Tables/Hartley's%20Fmax%20Table.pdf.
+
+The F-value is lower than the critical level. Therefor we do not reject $H-0$.
+
+It gives the same results as the Levene test.
+
+
+## 7. 1-way ANOVA
+
+```{r, fig.width=5, fig.height=5}
+summary(aov)
+
+```
+$H_0$ = There is no difference between the reading methods: "Basal, DRTA and Strat".
+
+$H_a$ = There is a difference between the reading methods: "Basal, DRTA, and Strat".
+
+p-level = 0.0152
+
+The p-level is lower than the significance level of 0.05. Therefor we reject $H_0$ and accept $H_a$.
+
+This means there is a difference between the reading methods.
+
+
+## 8. Effect size
+
+
+Report the effect size in terms of regular R² and adjusted R². The regular R² should be calculated manually.
+
+Formula regular R2:
+
+R^2 = SSG / SST = SSG / (SSG + SSE)
+
+SSG = Sum of Squares Group = 357.3
+
+SSE = Sum of Squares Error = 2511.7
+
+SST = Sum of Squares Total = SSG + SSE = 357.3 + 2511.7 = 2869
+
+
+
+
+```{r, fig.width=5, fig.height=5}
+summary(lm(formula = mydata$POST3 ~ mydata$Group, data = mydata))
+(SSG <- 357.3)
+(SSE <- 2511.7)
+(SST <- SSG + SSE)
+(R2 <- SSG/SST)
+
+```
+
+Adjusted R-square = 0.09675
+Regular R-square = 0.1245382
+
+The effectsize are for both R-squares are around the 0.1 and therefor we can state that the effectsize is small.
+
+## 9. Post-hoc test Bonferroni
+
+```{r, fig.width=5, fig.height=5}
+pairwise.t.test(x = mydata$POST3, g = mydata$Group, p.adjust.method = "bonferroni")
+
+```
+The p-level between DRTA and Basal is 0.012. This is below the the significance level of 0.05. There for there is
+a significant difference in means between DRTA and Basal.
+
+
+
+## 10. Post-hoc test TukeyHSD
+
+Another post-hoc test is Tukey Honest Significant Differences (TukeyHSD) covered in Levshina (Section 8.2.6). Run this test. Does the outcome agree with the test carried out in question 9?
+
+
+```{r, fig.width=5, fig.height=5}
+TukeyHSD(aov)
+
+```
+
+The highest difference in means is seen between DRTA and Basal. The Bonferroni outcome states the same. They outcomes
+agree with eachother.
+
+
+

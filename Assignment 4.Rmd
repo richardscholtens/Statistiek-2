@@ -1,0 +1,242 @@
+---
+title: "week 4 lab"
+date: "Generation date: `r format(Sys.time(), '%b %d, %Y - %H:%M:%S')`"
+output: 
+  html_document:
+    toc: true
+    code_folding: show
+    toc_float: 
+        collapsed: false
+        smooth_scroll: true
+    number_sections: true
+---
+
+
+```{r setup, message=F, echo=F}
+knitr::opts_chunk$set(echo = TRUE)
+
+packages <- c("car", "jtools", "rms")
+if (length(setdiff(packages, rownames(installed.packages()))) > 0) {
+  install.packages(setdiff(packages, rownames(installed.packages())), repos='http://cran.us.r-project.org') 
+}
+
+library(car)
+library(jtools)
+library(rms)
+```
+
+
+
+```{r load}
+mydf <- read.csv("lab4_cheese.csv") # load data
+str(mydf)
+acetic <- mydf$acetic
+lactic <- mydf$lactic
+h2s <- mydf$h2s
+taste <- mydf$taste
+
+```
+
+# Scatter plots
+
+```{r, fig.width=5, fig.height=5}
+plot(acetic ~ h2s)
+abline(lm(acetic ~ h2s))
+cor.test(acetic, h2s, method="spearman")  
+
+plot(acetic ~ lactic)
+abline(lm(acetic ~ lactic))
+cor.test(acetic, lactic, method="spearman")  
+
+plot(h2s ~ lactic)
+abline(lm(h2s ~ lactic))
+cor.test(h2s, lactic, method="spearman")  
+
+```
+
+I used the Spearman method. This is because the Pearson assumption aren't met where as the Spearman is. The assumptions are:
+
+Randomly selected sample
+
+Ordinal scale variables
+
+
+The p-values are as follows:
+
+
+1. P-level = 0.0001113
+   rho = 0.647085
+2. P-level = 0.001395
+   rho = 0.5568043
+3. P-level = 0.0001888
+   rho = 0.630355
+
+All the p-level states that there are significance correlations. The rho level states they are also positive.
+
+# LR
+
+```{r, fig.width=5, fig.height=5}
+(summary(m <- lm(taste ~ acetic + h2s + lactic)))
+
+```
+
+Acetic:
+  p-level = 0.94198
+  No significance is found
+  
+H2s:
+  p-level = 0.00425
+  Significance is found
+
+Lactic:
+  p-level = 0.03108
+  Significance is found
+  
+If the h2s variable is increased the taste variable wil increase by four. (taste =  h2s <|> 4 = 1)
+
+If the lactic variable is increased the taste variable wil increase by twenty. (taste =  lactic <|> 20 = 1)
+  
+
+# Interactions
+
+Try all the possible interactions between pairs of predictors and plot the model in which the coefficient of the interaction has the lowest p-value. If the model includes acetic in the interaction use this vtariable as the modifier (attribute "by" or "modx" depending on the plot function you use). How do you interpret the plot? Is the interaction significant?
+
+```{r, fig.width=10, fig.height=5}
+summary(m1 <- lm(taste ~ h2s * acetic + lactic))$coefficients
+summary(m2 <- lm(taste ~ h2s * lactic + acetic))$coefficients
+summary(m3 <- lm(taste ~ lactic * acetic + h2s))$coefficients
+interact_plot(m3, pred = lactic, modx = acetic)
+
+```
+
+h2s ~ acetic:
+  p-level = 0.30592343
+  
+h2s ~ lactic:
+  p-level = 0.8335830
+  
+lactic ~ acetic:
+  p-level =  0.250237424
+  
+The lowest p-level is the interaction between lactic and acetic.
+
+
+If there is a low level of lactic it is better to add less acetic to better the taste level. If we surpass the lactic level of 1.35 it is better to add more acetic to better the taste level.
+
+
+
+# Assumption: Linear relationship
+
+```{r, fig.width=5, fig.height=5}
+par(mfrow = c(1,3))
+crPlot(m, var = "acetic")
+crPlot(m, var = "h2s")
+crPlot(m, var = "lactic")
+```
+
+In the plot you can see that h2s and lactic have a relation. The response variable also roughly linear. The acetic variable on the other hand is not even near to linear.
+
+# Assumption: Errors vary constantly (homoscedasticity)
+
+$H_0$: the error has constant variance with the response
+
+$H_a$: the error has no constant variance with the response
+
+```{r, fig.width=10, fig.height=5}
+ncvTest(m)
+ncvTest(m, ~ acetic)
+ncvTest(m, ~ h2s)
+ncvTest(m, ~ lactic)
+plot(m, which=1)
+```
+
+m only:
+  p-level = 0.2819919
+
+acetic:
+  p-level = 0.04870253
+  
+h2s:
+  p-level = 0.4711799
+
+lactic:
+  p-level = 0.1939326
+  
+
+If use all variables together the  p-level is not significant and therefor we cannot reject $H_0$. This means the error has constant variance with the response.
+
+If we explore the variables one for one we see that we can't reject the $H_0$ for h2s and lactic. However for acetic we must reject $H_0$ and accept $H_a$. This means the error has no constant variance with the response.
+
+# Assumption: Multicollinearity
+
+```{r, fig.width=5, fig.height=5}
+car::vif(m)
+```
+
+Scores:
+acetic = 1.831589
+h2s = 1.992200
+lactic = 1.937912
+
+All the scores are below 5. We must conclude that there is no multicollinearity.
+
+
+# Assumption: autocorrelation of residuals
+
+$H_0$: There is no autocorrelation between the residuals.
+
+$H_a$: There is an autocorrelation between the residuals.
+
+
+```{r, fig.width=5, fig.height=5}
+durbinWatsonTest(m) # h0: no autocorrelation
+```
+
+p-level = 0.162
+
+The p-level is above the significance level and so we must conclude we cannot reject $H_0$. This means there is no autocorrelation between the residuals.
+
+# Assumption: residuals normally distributed
+
+$H-0$ = Each residual follows normal distribution.
+
+$H-a$ = Each residual doesn't follow normal distribution.
+
+```{r, fig.width=5, fig.height=5}
+shapiro.test(residuals(m))
+plot(m, which = 2)
+```
+
+p-level = 0.8312
+
+The p-level is above the significance level. Therefore we cannot reject $H_0$. This means every residual follows a normal distribution.
+
+We can see in the plot that this is also confirms a normal distribution.
+
+# Variable selection
+
+```{r, fig.width=5, fig.height=5}
+m0 <- lm(taste ~ 1, data = mydf)
+mforward <- step(m0, direction = "forward", scope = ~ acetic + h2s + lactic)
+mbackward <- step(m, direction = "backward")
+```
+
+In this test we approach a stepwise forward and backward selection. We get same results in both tests. It is better to get acetic out of the equation because this leads to worse results. It was also the only variable which could't conform to most of the other assumptions. 
+
+
+
+# Overfitting
+
+R-square = 0.6517 
+Optimism = 0.0407
+
+The optimism is a small part of the R-square. Furthermore we can see that in almost all of the tries the variables are below 0.05. We can conclude that there is no overfitting.
+
+
+```{r, fig.width=5, fig.height=5}
+m.val <- ols(taste ~ h2s + lactic, data = mydf, x = TRUE, y = TRUE)
+validate(m.val, bw = TRUE, B = 1000)
+
+```
+
+

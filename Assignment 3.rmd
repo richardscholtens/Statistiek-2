@@ -1,0 +1,239 @@
+---
+title: "week3 lab"
+author: "J.F.P. (Richard) Scholtens s2956586"
+date: "Generation date: `r format(Sys.time(), '%b %d, %Y - %H:%M:%S')`"
+output: 
+  html_document:
+    toc: true
+    code_folding: show
+    toc_float: 
+        collapsed: false
+        smooth_scroll: true
+    number_sections: true
+---
+
+```{r setup, message=F, echo=F}
+packages <- c("car", "energy", "ggplot2")
+if (length(setdiff(packages, rownames(installed.packages()))) > 0) {
+  install.packages(setdiff(packages, rownames(installed.packages())), repos='http://cran.us.r-project.org') 
+}
+```
+
+Compare intuitions of non-linguists vs geographic distances for Dutch dialects.
+
+Source: Van Bezooijen & Heeringa (2006)
+
+Intuitive distance: rate the dialect distance compared to standard Dutch per province: 0=
+equal to the standard, 100=maximum distance.
+
+Geographic distance between provinces and standard Dutch.
+·
+·
+Standard Dutch located at the position of Haarlem.
+
+Distances between the geographic centers of the provinces and Haarlem measured asthe-crow-ies
+and scaled to the range [0, 100].
+
+
+# Load data
+Create the 2 vectors for our numerical variables: intuitive distance and geographic distance.
+
+```{r load}
+int_dist <- c(57,55,58,58,56,50,39,40,20,18,34,17,22,41,51,72,57)
+geo_dist <- c(100,89,90,88,85,70,59,52,23,25,52,14,40,67,79,62,95)
+
+```
+
+# Scatter Plot
+
+```{r, fig.width=5, fig.height=5}
+plot(int_dist ~ geo_dist) # scatter plot of the correlation
+m <- lm(int_dist ~ geo_dist); abline(m) # regression line
+```
+
+We see a line which moves from left down to right top. This indicates there is a positive correlation between intuitive and geographic distance because the high values tend to correspond to high values of the other variable.
+
+# Pearson
+
+```{r, fig.width=5, fig.height=5}
+cor.test(int_dist, geo_dist, method="pearson", alternative="greater")
+```
+
+After reviewing the scatter plot I believe that there is a positive relationship between the intuïtive and geographical distance. Therefor I've come up with the following hypotheses.
+
+$H_0$ = There is no relationship between intuitive and geographical distance.
+
+$H_a$ = There is a positive relationship between intuïtive and geographical distance.
+
+df = 15
+P-level = 2.498e-06
+Correlation = 0.872257
+
+The p-level is below the significancelevel of 0.001 and therefor we must reject $H_0$ and accept $H_a$.
+
+# Assumptions Parametric Correlation
+
+
+Assumption 1: The sample is randomly selected from the population it represents
+
+The distances are randomly selected by the teacher. This assumption is met.
+
+Assumption 2:Both variables are at least interval-scaled
+
+The variables are ratio-scaled. This assumption is met.
+
+Assumption 3: Both variables come from a bivariate normal distribution and/or the sample size is large (30 and more observations).
+
+$H_0$ = The intuitive and geographical distances are normally distributed.
+
+$H_a$ = The intuitive and geographical distances are not normally distributed.
+
+
+```{r, fig.width=5, fig.height=5}
+library('energy')
+mvnorm.etest(cbind(int_dist, geo_dist), R=999) 
+```
+
+P-level = 2.2e-16
+
+The p-level is lower than the significance level of 0.01. Therefor we reject $H_0$ and accept $H_a$. This means the both variables are not bivariate normally distributed. 
+
+This assumption is not met and therefor we must use a non-parametric test.
+
+Assumption 4: The residual (error) variance is homoscedastic (homo is 'same' and scedastic comes from 'scatter').
+
+$H_0$ = The error variance is homoscedastic.
+
+$H_a$ = The error variance is not homoscedastic.
+
+```{r, fig.width=5, fig.height=5}
+library('car')
+ncvTest(m)
+```
+
+
+Chisquare = 0.07150393
+
+Df = 1
+
+P-level = 0.7891595
+
+The p-level is higher than the significance level of 0.01. Therefor we cannot reject $H_0$. This means the error variance is homoscedastic. This assumption is met.
+
+Assumption 5: The residuals are independent.
+
+$H_0$ = The is no autocorrelation between residuals.
+
+$H_a$ = The is autocorrelation between residuals.
+
+
+```{r, fig.width=5, fig.height=5}
+durbinWatsonTest(m)
+```
+
+D-W Statistic = 2.091171
+
+P-level = 0.864
+
+The p-level is higher than the significance level of 0.01. Therefor we cannot reject $H_0$. This means there is no autocorrelation between residuals. This assumption is met.
+
+
+Conclusion Assumptions:
+
+Because both variables are not bivariate normally distributed we must use a non-parametric correlation test. 
+
+
+# Non-parametric test
+
+$H_0$ = There is no relationship between intuitive and geographical distance.
+
+$H_a$ = There is a positive relationship between intuïtive and geographical distance.
+
+```{r, fig.width=5, fig.height=5}
+cor.test(int_dist, geo_dist, method="spearman", alternative="greater")
+cor.test(int_dist, geo_dist, method="kendall", alternative="greater")
+```
+
+Spearman:
+
+rho = 0.8483734
+P-level = 8.4e-06
+
+The p-level is lower than the significance level of 0.01. Therefor we reject $H_0$ and accept $H_a$. This means there is
+a positive relationship between intuitive and geographical distance.
+
+Kendall:
+
+tau = 0.7360646
+P-level = 2.171e-05
+
+The p-level is lower than the significance level of 0.01. Therefor we reject $H_0$ and accept $H_a$. This means there is
+a positive relationship between intuitive and geographical distance.
+
+
+# Non-parametric test, which to use?
+
+Because of the small dataset it is better to use the Kendall test because it yields less extreme values.
+
+# Assumptions Non-Parametric Correlation
+
+Assumption 1:  The sample is randomly drawn from the population. This means that the subjects were selected randomly.
+
+This assumption is met.
+
+Assumption 2: Both variables are on the ordinal scale of measurement. If they are interval- or ratioscaled, they will be transformed to ranks by R automatically.
+
+The variables are ratio-scaled and therefor the assumption is met.
+
+Conclusion:
+
+Both assumptions are met for the non-parametric correlation tests.
+
+# Check Outliers
+
+```{r, fig.width=5, fig.height=5}
+influencePlot(m, id.method = "identify")
+```
+
+I would remove datapoint 16 and 12 because of this:
+
+The studentized residual of datapoint 16 is higher than 2. The range is -2 to 2. This means there is a high discrepancy between the actual and fitted value.
+
+Datapoint 12 has more than twice the average hat value. There for it is better to remove because it has a high influence on the fitted values.
+
+Also the Cook distance of datapoint 16 is high. This means it has a high effect if removed.
+
+
+# Linear regression
+
+```{r, fig.width=5, fig.height=5}
+summary(lm(int_dist ~ geo_dist))
+confint(lm(int_dist ~ geo_dist))
+```
+
+b0 = 8.83076 
+
+P-level = 0.127
+
+The p-level is above the significance level and therefor not significant.
+
+Confidence interval range is between -2.8167406 and 20.4782515.
+
+b1 = 0.54576
+
+P-level = 5e-06
+
+Confidence interval range is between 0.3773608 and 0.7141569.
+
+The p-level is above the significance level and therefor significant.
+
+
+# Plot with confidence region
+
+```{r, fig.width=10, fig.height=5}
+library(ggplot2)
+data <- data.frame(int_dist, geo_dist)
+ggplot(data, aes(x=geo_dist, y=int_dist)) + geom_point(shape=1, size=3) + stat_smooth(method = lm)
+```
+
+

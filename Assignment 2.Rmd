@@ -1,0 +1,203 @@
+---
+title: "Statistics2, lab week 2: repeated measures ANOVA"
+author: "J.F.P. (Richard) Scholtens s2956586"
+date: "May 3th, 2018"
+output: html_document
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## 1. Load data and libraries
+
+The data is given in a format similar to that of file dialect_change_1.csv in the lecture and we need it in a format similar to dialect_change2.csv.
+
+We load the data and create two factor variables, one for the groups and another one for the subjects.
+
+```{r 1load}
+library(car)
+library(ez)
+
+RT <- c(461,245,846,976,567,318,567,689,432,658,478,571,578,769,389,518,
+        789,368,901,948,890,431,489,543,937,698,498,389,486,777,446,324,
+        478,336,753,653,639,302,371,782,480,352,447,434,307,543,787,349,
+        646,564,827,824,987,357,598,334,789,599,955,578,778,659,680,448)
+mygroups = c("SR_ANP","OR_ANP","SR_INP","OR_INP")
+(mysubjects <- seq(16))
+
+#your code here, create a sequence of numbers from 1 to 16. Hint: use function seq()
+
+# each group is repeated 16 times
+# vector subjects has less elements (16) than RT (64), therefore it will be repeated 4 times
+mydata <- data.frame(RT, rep(mygroups, each=16), mysubjects)
+colnames(mydata) <- c("RT", "Group", "Subj") # rename to more meaningful names
+mydata$Subj <- as.factor(mysubjects)#your code here # we need Subj to be a factor for the analyses below, and it wasn't by default. You can check with str(mydata). Make it a factor using function as.factor()
+str(mydata)
+```
+
+
+## 2. Boxplots
+
+```{r, fig.width=5, fig.height=5}
+
+boxplot(mydata$RT ~ mydata$Group, ylab = "Reading Time", col=rainbow(4))
+
+```
+
+I think the OR_INP group has the highest mean of al groups. 
+
+I also think the medians differ significantly from eachother.
+
+
+## 3. Hypotheses
+
+$H_0$ = There is no difference between the reading time of the four sentences: "SR_ANP, OR_ANP, SR_INP, OR_INP".
+
+$H_a$ = There is a difference between the reading time of the four sentences: "SR_ANP, OR_ANP, SR_INP, OR_INP".
+
+$\mu$ 1 = SR_ANP
+
+$\mu$ 2 = OR_ANP
+
+$\mu$ 3 = SR_INP
+
+$\mu$ 4 = OR_INP
+
+$H_0$ = $\mu$ 1 = $\mu$ 2 = $\mu$ 3 = $\mu$ 4
+
+$H_a$ = Not all of the $\mu$i are equal
+
+
+## 4. Normality
+
+
+```{r, fig.width=10, fig.height=5}
+aov <- aov(mydata$RT ~ mydata$Group)
+
+qqnorm(mydata$RT[mydata$Group == 'SR_ANP'])
+qqline(mydata$RT[mydata$Group == 'SR_ANP'])
+
+qqnorm(mydata$RT[mydata$Group == 'OR_ANP'])
+qqline(mydata$RT[mydata$Group == 'OR_ANP'])
+
+qqnorm(mydata$RT[mydata$Group == 'SR_INP'])
+qqline(mydata$RT[mydata$Group == 'SR_INP'])
+
+qqnorm(mydata$RT[mydata$Group == 'OR_INP'])
+qqline(mydata$RT[mydata$Group == 'OR_INP'])
+
+
+aggregate(mydata$RT ~ mydata$Group, data=mydata, function(x) shapiro.test(x)$p.value)
+```
+
+$H-0$ = Each group follows normal distribution.
+
+$H-a$ = Each group doesn't follow normal distribution.
+
+$\alpha$ = 0.05
+
+Shapiro P-value
+
+OR_ANP   0.04878843
+
+OR_INP   0.78201004
+
+SR_ANP   0.93644370
+
+SR_INP   0.05377226
+
+
+If we look at the qqplots we can see that all groups are normally distributed. However the p-values of the shapiro-test are higher than the alpha level except for OR_ANP. This means it should not be normally distributed. However because if we would round the number on two decimal the OR_ANP  would also be 0.05 and therefor normally distributed. Therefor we cannot reject $H-0$.
+
+## 5. Variance
+
+```{r, fig.width=5, fig.height=5}
+leveneTest(aov)
+```
+
+$H-0$ = The variance in the different groups are equal.
+
+$H-a$ = The variance in the different groups are not equal.
+
+$\alpha$ = 0.05
+
+P-value = 0.5944
+
+The p-value is above the significance level. Therefor we do not reject $H-0$. This means all groups are homogeneous.
+
+## 6. 1-way Anova
+
+```{r, fig.width=5, fig.height=5}
+summary(aov)
+summary(lm(formula = mydata$RT ~ mydata$Group, data = mydata))
+
+```
+
+$H_0$ = There is no difference between the reading time of the four sentences: "SR_ANP, OR_ANP, SR_INP, OR_INP".
+
+$H_a$ = There is a difference between the reading time of the four sentences: "SR_ANP, OR_ANP, SR_INP, OR_INP".
+
+$\alpha$ = 0.05
+
+p-level = 0.112
+
+The p-level is higher than the significance level of 0.05. Therefor we cannot reject $H_0$.
+
+This means there is no difference between the reading times in the groups.
+
+The effectsize are for the adjusted R-square is around the 0.1 and therefor we can state that the effectsize is small.
+
+
+## 7. Repeated Measures Anova
+
+```{r, fig.width=5, fig.height=5}
+(summary(rep.aov <- aov(RT~Group + Error(Subj/Group), data = mydata)))
+(repeated.aov <-  ezANOVA(data = mydata, dv = RT, wid = Subj, within = Group,
+detailed = TRUE))$ANOVA
+
+```
+
+$H_0$ = There is no difference between the reading time of the four sentences: "SR_ANP, OR_ANP, SR_INP, OR_INP".
+
+$H_a$ = There is a difference between the reading time of the four sentences: "SR_ANP, OR_ANP, SR_INP, OR_INP".
+
+$\alpha$ = 0.05
+
+p-level = 1.933615e-02
+
+The p-level is lower than the significance level of 0.05. Therefor we reject $H_0$, and accept $H_a$.
+
+This means there is a difference between the reading times in the groups. 
+
+
+
+## 8. Difference between the two ANOVAs tests
+
+The repeated measures ANOVA states that $H_0$ has to be rejected and we have to accept $H_a$ while the one way ANOVA states that we cannot reject ANOVA. When we use the repeated measures ANOVA we have a lower SSE because we have removed the SSS. Because of that the p-level gets lower than in the one way ANOVA.
+
+## 9. Sphericity
+
+```{r, fig.width=5, fig.height=5}
+repeated.aov$`Mauchly's Test for Sphericity`
+```
+
+
+$H_0$ = The variances of the differences between the four sentences SR_ANP, OR_ANP, SR_INP, and OR_INP are equal.
+
+$H_a$ = The variances of the differences between the four sentences SR_ANP, OR_ANP, SR_INP, and OR_INP are not equal.
+
+p-level = 0.8921161
+
+The p-level is higher than the significance level and therefor we can not reject $H_0$. This means the variances of the differences are equal between all four sentences.
+
+## 10. Effect size
+
+Effectsize = SSn(Group)/ SSn(Group) + SSd(intercept) + SSd(groep)
+
+```{r, fig.width=5, fig.height=5}
+repeated.aov$ANOVA
+```
+
+The effect size = 0.09423971

@@ -1,0 +1,132 @@
+---
+title: "lab week5: logistic regression"
+author: "J.F.P. (Richard) Scholtens s2956586"
+date: "Generation date: `r format(Sys.time(), '%b %d, %Y - %H:%M:%S')`"
+output: 
+  html_document:
+    toc: true
+    code_folding: show
+    toc_float: 
+        collapsed: false
+        smooth_scroll: true
+    number_sections: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+packages <- c("rms")
+if (length(setdiff(packages, rownames(installed.packages()))) > 0) {
+  install.packages(setdiff(packages, rownames(installed.packages())), repos='http://cran.us.r-project.org') 
+}
+
+library(rms) #needed for lrm()
+```
+
+# Load data
+
+We create a data frame from the table shown in this week's slides (slide 7, do not include column "both").
+
+To avoid typing all the observations (there are 184!) we use the function "c()" to concatenate information and function "rep()" to repeat one element multiple times.
+
+```{r 1load, message=FALSE}
+library(rms) #needed for lrm()
+
+# create the variables
+status <- c(rep("upper", 36), rep("middle",94), rep("lower",54))
+outcome <- c(rep("r", 30), rep("schwa", 6), rep("r", 20), rep("schwa", 74), rep("r", 4), rep("schwa", 50))
+
+# create the data frame
+ny.data <- data.frame(outcome, status)
+table(ny.data) 
+```
+
+
+# Factor variables
+
+```{r, fig.width=5, fig.height=5}
+str(ny.data)
+```
+
+As you can see in the results both variables are Factors.
+
+# Reference level
+
+Use the following levels as the reference ones:
+- "schwa" in the variable pronunciation
+- "lower" in the variable status
+
+```{r, fig.width=5, fig.height=5}
+ny.data$outcome <- relevel(ny.data$outcome, ref = "schwa")
+levels(ny.data$outcome)
+levels(ny.data$status)
+```
+
+One of the variables (status) has already a "lower" reference level.
+
+
+# Fit a model
+
+
+```{r, fig.width=5, fig.height=5}
+(m.lrm <- lrm(outcome ~ status, data = ny.data))
+summary(m.glm <- glm(outcome ~ status, data = ny.data, family = binomial))
+
+```
+
+# Assumptions
+
+```{r, fig.width=5, fig.height=5}
+rms::vif(m.lrm)
+```
+
+We don't have to check the linearity. This is because there are no quantitative exporaty variables.
+
+By using the VIF method we can see there is no multicollinearity because both scores are below the 5.
+
+
+# Odds of "r" to "schwa" when the predictor status is at its reference level ("lower")
+
+```{r, fig.width=5, fig.height=5}
+exp(-2.5257)
+```
+
+The intercept was -2.5257. The odds are 0.08000229.
+
+
+# Probability of the outcome being "r" in this case, i.e. status "lower"?
+
+
+```{r, fig.width=5, fig.height=5}
+exp(-2.5257)/(1+exp(-2.5257))
+
+```
+
+# In which status is one more prone to pronounce "r" (instead of "schwa")? How many times higher are the odds compared to the reference level of status ("lower")?
+
+```{r, fig.width=5, fig.height=5}
+exp(4.1352)
+
+```
+
+
+As we could see in the table in the beginning of this report we see that from status upper has the highest frequency. 
+
+
+Odds: 62.50209
+
+This means the odds of hearing r over schwa are 62.50209 times more likely in the upper states than in the lower status.
+
+# Confidence intervals
+
+```{r, fig.width=5, fig.height=5}
+
+exp(confint(m.glm))
+
+```
+
+There is no 1 in the intervals. This means they are significant.
+
+# Performance
+
+In the logistic regression model we can see the C level is 0.805. This means it is between acceptable and excellent.

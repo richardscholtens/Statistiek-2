@@ -1,0 +1,142 @@
+---
+title: "week 6 lab"
+author: "J.F.P. (Richard) Scholtens s2956586"
+date: "Generation date: `r format(Sys.time(), '%b %d, %Y - %H:%M:%S')`"
+output: 
+  html_document:
+    toc: true
+    code_folding: show
+    toc_float: 
+        collapsed: false
+        smooth_scroll: true
+    number_sections: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+packages <- c("jtools", "lme4", "visreg")
+if (length(setdiff(packages, rownames(installed.packages()))) > 0) {
+  install.packages(setdiff(packages, rownames(installed.packages())), repos='http://cran.us.r-project.org') 
+}
+
+library(jtools)
+library(lme4)
+library(visreg)
+```
+
+# Load data
+
+```{r load}
+
+mydf = read.csv("lab6_temperature.csv")
+str(mydf)
+
+
+```
+
+# Make Coastal a factor
+
+```{r, fig.width=5, fig.height=5}
+str(mydf$Coastal <- as.factor(mydf$Coastal))
+```
+
+# Centre variables
+
+```{r, fig.width=5, fig.height=5}
+mydf$center.Latitude <- mydf$Latitude - mean(mydf$Latitude)
+
+mydf$center.Longitude <- mydf$Longitude - mean(mydf$Longitude)
+
+mydf$center.Elevation <- mydf$Elevation - mean(mydf$Elevation)
+
+mydf$scale.Elevation <- mydf$center.Elevation/1000
+
+```
+
+# Boxplots
+
+```{r, fig.width=10, fig.height=5}
+boxplot(mydf$Temperature ~ mydf$City)
+boxplot(mydf$Temperature ~ mydf$Year)
+```
+
+We can see there is a lot of variation between the cities. However the variation within the years is almost non existent.
+
+# LMER
+
+```{r, fig.width=5, fig.height=5}
+library(lme4)
+m.lmer3 <- lmer(Temperature ~ Coastal + center.Latitude + center.Longitude + scale.Elevation + (1|City) + (1|Year), data=mydf, REML=F)
+summary(m.lmer3)
+
+```
+
+All the t values are above 2. The minus numbers get an absolute value wich is higher than 2. Therefor all the predictors are significant.
+
+This means the following:
+
+Whenever a city is a coastal city the temperature is about 6.4729 higher.
+
+For every unit of latitude the temperature will drop with -1.8955 degrees.
+
+For every unit of latitude the temperature will increase with 0.2822 degrees.
+
+For every unit of elevation the temperature will drop with -2.1882 degrees.
+
+
+# Add interactions
+
+```{r, fig.width=5, fig.height=5}
+m.lmer4 <- lmer(Temperature ~ Coastal*center.Longitude + Coastal*center.Latitude + Coastal*scale.Elevation + center.Latitude*center.Elevation + center.Longitude*center.Elevation + (1|City) + (1|Year), data=mydf, REML=F)
+summary(m.lmer4)$coef
+AIC(m.lmer4) - AIC(m.lmer3)
+anova(m.lmer3, m.lmer4)
+
+```
+We can see a minus integer when we check the AIC. This means the model with the interactions is better. Also the p-level of the anova test is below significance level of 0.05.
+
+There is one interaction which is not significant. The interaction of latitude and elevation has an absolute t-value which is below 2.
+
+
+# Visualise interactions
+```{r, fig.width=10, fig.height=5}
+library(visreg)
+visreg(m.lmer4, xvar = "center.Latitude", by = "Coastal")
+visreg(m.lmer4, xvar = "center.Elevation", by = "Coastal")
+```
+
+In the first graph you can see that the temperature drops with more units of latitude for all cities.
+
+I the second graph you can see that the temperature drops quicker for cities which have a high elevation and are a coastal city. However a lot of cities do not have a high elevation. All but 2. This can be seen in the second frame of the graph where you see left a lot of stripes and to the right only two.
+
+
+# Assumptions (normality)
+
+```{r, fig.width=5, fig.height=5}
+qqnorm(resid(m.lmer4))
+qqline(resid(m.lmer4))
+shapiro.test(resid(m.lmer4))
+```
+
+We see a slightly s-shaped line in the plot. This means it in not normally distributed. The shapiro test confirms with a p-level below
+the 0.05 signficance lecvel. p-level = 2.2e-16.
+
+
+# Assumptions (heteroscedasticity)
+
+```{r, fig.width=5, fig.height=5}
+plot(fitted(m.lmer4), resid(m.lmer4))
+``` 
+
+If look at the dots we can see that all distances on the x-axis look the same. Therefor we can state there is no heteroscedasticity.
+
+# Outliers
+
+```{r, fig.width=5, fig.height=5}
+(noutliers <- sum(abs(scale(resid(m.lmer4))) >= 2))
+noutliers / nrow(mydf)
+```
+
+There are 4 datapoints.
+Of these points there are 0.002380952 % of the observations deleted.
